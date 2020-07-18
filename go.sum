@@ -1,0 +1,6 @@
+github.com/bluecoatstand/ttlmap v0.0.0-20200716131455-66fc0bdbbdfa h1:xk3+NNFpEZFAVK96I5QfaOZ5MKmz0uFGVoAZe1oumqo=
+github.com/bluecoatstand/ttlmap v0.0.0-20200716131455-66fc0bdbbdfa/go.mod h1:vEmUzXaeuBRNYPP5Vw2Vhdb01uVWMKfyxanh+K1x2U0=
+github.com/bluecoatstand/ttlmap v0.0.1 h1:vzGagBzvw8NgnF7bM+oGcN+ozmEy4b5cSDCZFTgtdog=
+github.com/bluecoatstand/ttlmap v0.0.1/go.mod h1:ikMvZpm55bQl59M985UBd+37dJCrBL8vA7f28Wp5LJE=
+github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
+github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=

@@ -10,17 +10,19 @@ import (
 
 // tokenResponseWriter is used to send a new session token in each response
 type tokenResponseWriter struct {
-	w      http.ResponseWriter
-	claims jwt.MapClaims
-	jwtKey string
+	w         http.ResponseWriter
+	claims    jwt.MapClaims
+	jwtKey    string
+	secretKey []byte
 }
 
 // newTokenResponseWriter will return an instance of the tokenResponseWriter
-func newTokenResponseWriter(w http.ResponseWriter, jwtKey string, claims jwt.MapClaims) tokenResponseWriter {
+func newTokenResponseWriter(w http.ResponseWriter, jwtKey string, secretKey []byte, claims jwt.MapClaims) tokenResponseWriter {
 	return tokenResponseWriter{
-		w:      w,
-		claims: claims,
-		jwtKey: jwtKey,
+		w:         w,
+		claims:    claims,
+		jwtKey:    jwtKey,
+		secretKey: secretKey,
 	}
 }
 
@@ -45,13 +47,22 @@ func (r tokenResponseWriter) WriteHeader(statusCode int) {
 
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, r.claims)
 
-			signedToken, err := token.SignedString([]byte(r.jwtKey))
+			var err error
+			var tokenInterface interface{}
+
+			tokenInterface, err = token.SignedString([]byte(r.jwtKey))
 			if err != nil {
 				log.Printf("Failed to create token: [%v]", err)
 				return
 			}
 
-			r.w.Header().Set("Authorization", signedToken)
+			tokenStr, ok := tokenInterface.(string)
+			if !ok {
+				log.Printf("Failed to create token: [Bad interface]")
+				return
+			}
+
+			r.w.Header().Set("Authorization", tokenStr)
 		}
 	}
 	r.w.WriteHeader(statusCode)

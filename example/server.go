@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,13 +14,15 @@ import (
 
 func main() {
 	jwtKey := "0000000000000000000000000000000000000000000000000000000000000000"
+	secretKey, _ := hex.DecodeString(jwtKey)
+
 	key := borderforce.ContextKey("account_id")
 
-	token, _ := borderforce.CreateToken(jwtKey, jwt.MapClaims{
+	token, _ := borderforce.CreateToken(jwtKey, secretKey, jwt.MapClaims{
 		"account_id": "42",
 		"exp":        time.Now().AddDate(0, 0, 365).Unix(),
 	})
-	log.Printf("TOKEN: %s\n", token)
+	fmt.Printf("Try:\n\ncurl -H \"Authorization: Bearer %s\" localhost:8000\n", token)
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -27,6 +30,7 @@ func main() {
 		IDKey:                "account_id",
 		IsActive:             func(string) bool { return true },
 		JWTKey:               jwtKey,
+		SecretKey:            secretKey,
 		RejectOnTokenFailure: true,
 	})
 

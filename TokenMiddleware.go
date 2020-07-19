@@ -42,7 +42,7 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 
 			tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 
-			claims, err := VerifyToken(config.JWTKey, tokenString)
+			claims, err := VerifyToken(config.JWTKey, config.SecretKey, tokenString)
 			if err != nil {
 				if config.RejectOnTokenFailure {
 					w.WriteHeader(http.StatusUnauthorized)
@@ -83,7 +83,7 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 						ctx := context.WithValue(r.Context(), contextAccountIDKey, accountID)
 
 						// TODO - Only generate tokens here for session tokens
-						next.ServeHTTP(newTokenResponseWriter(w, config.JWTKey, claimsMap), r.WithContext(ctx))
+						next.ServeHTTP(newTokenResponseWriter(w, config.JWTKey, config.SecretKey, claimsMap), r.WithContext(ctx))
 						return
 					}
 				}
@@ -94,23 +94,40 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 }
 
 // CreateToken creates a JWT token that expires in 15 minutes from now.
-func CreateToken(jwtKey string, claims jwt.MapClaims) (string, error) {
+func CreateToken(jwtKey string, secretKey []byte, claims jwt.MapClaims) (string, error) {
 	if jwtKey == "" {
 		return "", errors.New("No jwtKey is defined")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signedToken, err := token.SignedString([]byte(jwtKey))
+	tokenStr, err := token.SignedString([]byte(jwtKey))
 	if err != nil {
 		return "", err
 	}
-	return signedToken, nil
+
+	if len(secretKey) > 0 {
+		var err error
+		tokenStr, err = encryptString(secretKey, tokenStr)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return tokenStr, nil
 }
 
 // VerifyToken takes a token string and returns the Claims within it.
-func VerifyToken(jwtKey string, tokenString string) (jwt.Claims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+func VerifyToken(jwtKey string, secretKey []byte, tokenStr string) (jwt.Claims, error) {
+	if len(secretKey) > 0 {
+		var err error
+		tokenStr, err = decryptString(secretKey, tokenStr)
+		if err != nil {
+			return nil, errors.New("Invalid token")
+		}
+	}
+
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		return []byte(jwtKey), nil
 	})
 

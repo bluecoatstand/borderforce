@@ -20,6 +20,14 @@ var activeTTLMap = ttlmap.NewTTLMap(10 * time.Second)
 func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 	var contextAccountIDKey = ContextKey(config.IDKey)
 
+	if config.Encoding == "" {
+		config.Encoding = "hex"
+	}
+
+	if config.Duration == 0 {
+		config.Duration = time.Minute * 15
+	}
+
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if config.JWTKey == "" {
@@ -42,7 +50,7 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 
 			tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 
-			claims, err := VerifyToken(config.JWTKey, config.SecretKey, tokenString)
+			claims, err := VerifyToken(config.JWTKey, config.SecretKey, config.Encoding, tokenString)
 			if err != nil {
 				if config.RejectOnTokenFailure {
 					w.WriteHeader(http.StatusUnauthorized)
@@ -83,7 +91,7 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 						ctx := context.WithValue(r.Context(), contextAccountIDKey, accountID)
 
 						// TODO - Only generate tokens here for session tokens
-						next.ServeHTTP(newTokenResponseWriter(w, config.JWTKey, config.SecretKey, claimsMap), r.WithContext(ctx))
+						next.ServeHTTP(newTokenResponseWriter(w, config.JWTKey, config.SecretKey, config.Duration, config.Encoding, claimsMap), r.WithContext(ctx))
 						return
 					}
 				}
@@ -93,11 +101,14 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// CreateToken creates a JWT token that expires in 15 minutes from now.
-func CreateToken(jwtKey string, secretKey []byte, claims jwt.MapClaims) (string, error) {
+// CreateToken creates a JWT token.
+func CreateToken(jwtKey string, secretKey []byte, encoding string, session bool, duration time.Duration, claims jwt.MapClaims) (string, error) {
 	if jwtKey == "" {
 		return "", errors.New("No jwtKey is defined")
 	}
+
+	claims["session"] = session
+	claims["exp"] = time.Now().Add(duration).Unix()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -108,7 +119,7 @@ func CreateToken(jwtKey string, secretKey []byte, claims jwt.MapClaims) (string,
 
 	if len(secretKey) > 0 {
 		var err error
-		tokenStr, err = encryptString(secretKey, tokenStr)
+		tokenStr, err = encryptString(secretKey, tokenStr, encoding)
 		if err != nil {
 			return "", err
 		}
@@ -118,10 +129,10 @@ func CreateToken(jwtKey string, secretKey []byte, claims jwt.MapClaims) (string,
 }
 
 // VerifyToken takes a token string and returns the Claims within it.
-func VerifyToken(jwtKey string, secretKey []byte, tokenStr string) (jwt.Claims, error) {
+func VerifyToken(jwtKey string, secretKey []byte, encoding string, tokenStr string) (jwt.Claims, error) {
 	if len(secretKey) > 0 {
 		var err error
-		tokenStr, err = decryptString(secretKey, tokenStr)
+		tokenStr, err = decryptString(secretKey, tokenStr, encoding)
 		if err != nil {
 			return nil, errors.New("Invalid token")
 		}

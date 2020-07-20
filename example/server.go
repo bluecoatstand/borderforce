@@ -15,12 +15,12 @@ import (
 func main() {
 	jwtKey := "0000000000000000000000000000000000000000000000000000000000000000"
 	secretKey, _ := hex.DecodeString(jwtKey)
+	encoding := "base64"
 
 	key := borderforce.ContextKey("account_id")
 
-	token, _ := borderforce.CreateToken(jwtKey, secretKey, jwt.MapClaims{
+	token, _ := borderforce.CreateToken(jwtKey, secretKey, encoding, true, time.Minute*15, jwt.MapClaims{
 		"account_id": "42",
-		"exp":        time.Now().AddDate(0, 0, 365).Unix(),
 	})
 	fmt.Printf("Try:\n\ncurl -H \"Authorization: Bearer %s\" localhost:8000\n", token)
 
@@ -31,10 +31,12 @@ func main() {
 		IsActive:             func(string) bool { return true },
 		JWTKey:               jwtKey,
 		SecretKey:            secretKey,
+		Encoding:             encoding,
 		RejectOnTokenFailure: true,
 	})
 
 	router.HandleFunc("/", bfFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fmt.Sprintf("Hello world - %s\n", r.Context().Value(key))))
 	})).Methods(http.MethodGet)
 

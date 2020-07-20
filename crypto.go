@@ -4,11 +4,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 )
 
-func encryptString(secretKey []byte, plainText string) (string, error) {
+func encryptString(secretKey []byte, plainText string, encoding string) (string, error) {
 	block, err := aes.NewCipher(secretKey)
 	if err != nil {
 		return "", err
@@ -26,10 +27,16 @@ func encryptString(secretKey []byte, plainText string) (string, error) {
 
 	cipherText := aesgcm.Seal(iv, iv, []byte(plainText), nil)
 
+	if encoding == "base64" {
+		return base64.RawURLEncoding.EncodeToString(cipherText), nil
+	}
+
 	return hex.EncodeToString(cipherText), nil
 }
 
-func decryptString(secretKey []byte, cipherText string) (string, error) {
+func decryptString(secretKey []byte, cipherText string, encoding string) (string, error) {
+	var err error
+
 	block, err := aes.NewCipher(secretKey)
 	if err != nil {
 		return "", err
@@ -40,7 +47,13 @@ func decryptString(secretKey []byte, cipherText string) (string, error) {
 		return "", err
 	}
 
-	data, err := hex.DecodeString(cipherText)
+	var data []byte
+
+	if encoding == "base64" {
+		data, err = base64.RawURLEncoding.DecodeString(cipherText)
+	} else {
+		data, err = hex.DecodeString(cipherText)
+	}
 	if err != nil {
 		return "", err
 	}

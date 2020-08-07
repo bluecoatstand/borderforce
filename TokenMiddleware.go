@@ -19,6 +19,7 @@ var activeTTLMap = ttlmap.NewTTLMap(10 * time.Second)
 // Middleware returns a middleware function that can be used to wrap other handlers
 func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 	var contextAccountIDKey = ContextKey(config.IDKey)
+	var contextClaimsKey = ContextKey("claims")
 
 	if config.Encoding == "" {
 		config.Encoding = "hex"
@@ -90,7 +91,11 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 
 						ctx := context.WithValue(r.Context(), contextAccountIDKey, accountID)
 
-						// TODO - Only generate tokens here for session tokens
+						if config.PushClaimsToContext {
+							var m map[string]interface{} = claimsMap
+							ctx = context.WithValue(ctx, contextClaimsKey, m)
+						}
+
 						next.ServeHTTP(newTokenResponseWriter(w, config.JWTKey, config.SecretKey, config.Duration, config.Encoding, claimsMap), r.WithContext(ctx))
 						return
 					}

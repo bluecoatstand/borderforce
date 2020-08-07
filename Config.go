@@ -8,6 +8,7 @@ type Config struct {
 	JWTKey               string
 	SecretKey            []byte
 	IDKey                string
+	PushClaimsToContext  bool
 	RejectOnTokenFailure bool
 	Encoding             string
 	Duration             time.Duration

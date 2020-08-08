@@ -92,7 +92,11 @@ func Middleware(config *Config) func(http.HandlerFunc) http.HandlerFunc {
 						ctx := context.WithValue(r.Context(), contextAccountIDKey, accountID)
 
 						if config.PushClaimsToContext {
-							var m map[string]interface{} = claimsMap
+							m := make(map[string]interface{})
+
+							for k, v := range claimsMap {
+								m[k] = v
+							}
 							ctx = context.WithValue(ctx, contextClaimsKey, m)
 						}
 
